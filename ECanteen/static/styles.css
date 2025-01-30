@@ -24,6 +24,17 @@ button {
     transition: filter var(--transition);
 }
 
+.CENTERME {
+    max-width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.button-group {
+    max-width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
 .btn-primary { background: var(--primary); color: white; }
 .btn-secondary { background: var(--secondary); color: white; }
 .btn-danger { background: var(--danger); color: white; }

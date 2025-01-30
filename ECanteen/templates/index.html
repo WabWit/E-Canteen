@@ -5,25 +5,26 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <h2>Purchase System</h2>
+    <h2 class = "CENTERME" >Purchase System</h2>
     
-    <div class="button-group">
+    <div class = "CENTERME" class="button-group">
         <button class="btn-secondary" onclick="selectCategory('Juice')">Juice</button>
         <button class="btn-secondary" onclick="selectCategory('Food')">Food</button>
         <button class="btn-secondary" onclick="selectCategory('Shake')">Shake</button>
     </div>
 
-    <div id="priceButtons" class="button-group"></div>
+    <div id="priceButtons" class="button-group" class = "CENTERME"></div>
 
     <div id="cart">
-        <h3>Current Order</h3>
+        <h3 class = "CENTERME" >Current Order</h3>
         <div id="cartItems"></div>
-        <div id="cartTotal">Total: Php 0</div>
+        <div class = "CENTERME" id="cartTotal">Total: Php 0</div>
     </div>
-
-    <input type="text" id="accountId" placeholder="Account ID">
-    <button class="btn-primary" onclick="confirmPurchase()">Proceed to Payment</button>
-    <div id="purchaseResult"></div>
+    <div class = "CENTERME">
+        <input type="text" id="accountId" placeholder="Account ID">
+        <button class="btn-primary" onclick="confirmPurchase()">Proceed to Payment</button>
+    </div>
+    <div class = "CENTERME" id="purchaseResult"></div>
 
     <div class="modal-backdrop" style="display: none"></div>
     <div class="confirmation" style="display: none">
