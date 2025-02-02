@@ -22,6 +22,30 @@ def save_database(accounts, sales):
 def home():
     return render_template('index.html')
 
+@app.route('/confirm_account', methods=['POST'])
+def confirm_account():
+    try:
+        # Get form data
+        account_id = request.form['account_id'].strip()
+        total = int(request.form['total'])
+
+        accounts, _ = load_database()
+        
+        # Find account
+        account = accounts[accounts['ID'] == account_id]
+        if account.empty:
+            return jsonify({'error': 'Account not found'}), 404
+            
+        balance = int(account.iloc[0]['Balance'])
+        if balance < total:
+            return jsonify({'error': 'Insufficient balance'}), 400
+
+        # Return success if checks pass
+        return jsonify({'message': 'Account validated'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/make_purchase', methods=['POST'])
 def make_purchase():
     try:

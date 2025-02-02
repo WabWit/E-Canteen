@@ -71,7 +71,7 @@
                     </div>
                 `).join('');
             document.getElementById('cartTotal').textContent = 
-                `Total: $${cart.reduce((sum, item) => sum + item.price, 0)}`;
+                `Total: Php ${cart.reduce((sum, item) => sum + item.price, 0)}`;
         }
 
         function removeItem(index) {
@@ -79,18 +79,42 @@
             updateCart();
         }
 
-        function confirmPurchase() {
+        async function confirmPurchase() {
             const id = document.getElementById('accountId').value.trim();
             if (!id || cart.length === 0) return alert('Complete all fields');
             
-            document.querySelector('.modal-backdrop').style.display = 'block';
-            document.querySelector('.confirmation').style.display = 'block';
-            document.getElementById('confirmAccount').textContent = id;
-            document.getElementById('confirmItems').innerHTML = cart
-                .map(item => `<div>${item.category} - Php ${item.price}</div>`)
-                .join('');
-            document.getElementById('confirmTotal').textContent = 
-                `Php ${cart.reduce((sum, item) => sum + item.price, 0)}`;
+            // Calculate total from cart
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            
+            try {
+                // Use proper content type and data format
+                const response = await fetch('/confirm_account', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({
+                        account_id: id,
+                        total: total
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error);
+                }
+
+                // Show confirmation modal only if checks pass
+                document.querySelector('.modal-backdrop').style.display = 'block';
+                document.querySelector('.confirmation').style.display = 'block';
+                document.getElementById('confirmAccount').textContent = id;
+                document.getElementById('confirmItems').innerHTML = cart
+                    .map(item => `<div>${item.category} - Php ${item.price}</div>`)
+                    .join('');
+                document.getElementById('confirmTotal').textContent = 
+                    `Php ${total}`;
+                    
+            } catch (error) {
+                document.getElementById('purchaseResult').textContent = error.message;
+            }
         }
 
         async function finalizePurchase() {
@@ -111,6 +135,7 @@
                 const result = await response.json();
                 document.getElementById('purchaseResult').textContent = 
                     response.ok ? `${result.message}` : result.error;
+                    console.log(result);
                 
                 if (response.ok) {
                     cart = [];
