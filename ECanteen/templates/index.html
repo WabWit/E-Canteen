@@ -87,7 +87,6 @@
             const total = cart.reduce((sum, item) => sum + item.price, 0);
             
             try {
-                // Use proper content type and data format
                 const response = await fetch('/confirm_account', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -97,25 +96,26 @@
                     })
                 });
                 
+                const result = await response.json();
+                
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error);
+                    throw new Error(result.error);
                 }
 
-                // Show confirmation modal only if checks pass
+                // Show confirmation modal with account name
                 document.querySelector('.modal-backdrop').style.display = 'block';
                 document.querySelector('.confirmation').style.display = 'block';
-                document.getElementById('confirmAccount').textContent = id;
+                document.getElementById('confirmAccount').textContent = result.account_name;
                 document.getElementById('confirmItems').innerHTML = cart
                     .map(item => `<div>${item.category} - Php ${item.price}</div>`)
                     .join('');
-                document.getElementById('confirmTotal').textContent = 
-                    `Php ${total}`;
-                    
+                document.getElementById('confirmTotal').textContent = `Php ${total}`;
+                
             } catch (error) {
                 document.getElementById('purchaseResult').textContent = error.message;
             }
         }
+                
 
         async function finalizePurchase() {
             const id = document.getElementById('accountId').value.trim();
@@ -128,7 +128,8 @@
                     body: new URLSearchParams({
                         account_id: id,
                         cart: JSON.stringify(cart),
-                        total: total
+                        total: total,
+                        purchaseTotal: cart.length
                     })
                 });
                 

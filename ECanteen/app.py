@@ -1,22 +1,28 @@
 from flask import Flask, render_template, request, jsonify
-import pandas as pd
-from pathlib import Path
+from pymongo import MongoClient
+from bson.decimal128 import Decimal128
+import os
+
 
 app = Flask(__name__)
-DATABASE_PATH = Path("database.xlsx")
 
-def load_database():
-    if DATABASE_PATH.exists():
-        with pd.ExcelFile(DATABASE_PATH) as excel:
-            accounts = pd.read_excel(excel, "Accounts", dtype={'ID': str})
-            sales = pd.read_excel(excel, "Sales")
-        return accounts, sales
-    return pd.DataFrame(columns=["ID", "Account name", "Balance"]), pd.DataFrame(columns=["Category", "Total"])
+uri = "mongodb+srv://wab:ZHxGMWcsVqDvVfDF@ecanteendb.plico.mongodb.net/?retryWrites=true&w=majority&appName=ECANTEENDB"
+client = MongoClient(uri)
 
-def save_database(accounts, sales):
-    with pd.ExcelWriter(DATABASE_PATH) as writer:
-        accounts.to_excel(writer, "Accounts", index=False)
-        sales.to_excel(writer, "Sales", index=False)
+# MongoDB Atlas connection
+
+db = client["ECanteenDB"]
+accounts_collection = db["Accounts"]
+sales_collection = db["Sales"]
+
+def convert_decimal(doc):
+    """Convert Decimal128 or int values to float for JSON serialization"""
+    for key, value in doc.items():
+        if isinstance(value, Decimal128):
+            doc[key] = float(value.to_decimal())  # Convert Decimal128 to float
+        elif isinstance(value, int):
+            doc[key] = float(value)  # Convert int to float
+    return doc
 
 @app.route('/')
 def home():
@@ -29,68 +35,75 @@ def confirm_account():
         account_id = request.form['account_id'].strip()
         total = int(request.form['total'])
 
-        accounts, _ = load_database()
-        
-        # Find account
-        account = accounts[accounts['ID'] == account_id]
-        if account.empty:
+        # Find account in MongoDB
+        account = accounts_collection.find_one({"ID": account_id})
+        if not account:
             return jsonify({'error': 'Account not found'}), 404
-            
-        balance = int(account.iloc[0]['Balance'])
+
+        # Get balance (stored as an integer)
+        balance = account['Balance']
         if balance < total:
             return jsonify({'error': 'Insufficient balance'}), 400
 
         # Return success if checks pass
-        return jsonify({'message': 'Account validated'}), 200
-        
+        print("amogus" + account['AccountName'])
+        return jsonify({'message': 'Account validated', 'account_name' : account['AccountName']}), 200
+    
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/make_purchase', methods=['POST'])
 def make_purchase():
     try:
-        data = request.form
-        account_id = data['account_id'].strip()
-        cart = eval(data['cart'])
-        total = int(data['total'])
+        # Get form data
+        account_id = request.form['account_id'].strip()
+        cart = eval(request.form['cart'])  # In production, use proper JSON parsing
+        total = int(request.form['total'])  # Ensure total is an integer
+        purchaseTot = int(request.form['purchaseTotal'])
 
-        accounts, sales = load_database()
-        account_index = accounts.index[accounts['ID'] == account_id].tolist()
-        
-        if not account_index:
+        # Find account in MongoDB
+        account = accounts_collection.find_one({"ID": account_id})
+        if not account:
             return jsonify({'error': 'Account not found'}), 404
-            
-        index = account_index[0]
-        balance = int(accounts.at[index, 'Balance'])
-        
+
+        # Get balance (stored as an integer)
+        balance = account['Balance']
         if balance < total:
             return jsonify({'error': 'Insufficient balance'}), 400
 
-        # Update sales
+        # Update sales for each item in cart
         for item in cart:
             category = item['category']
-            price = item['price']
-            if sales.empty or category not in sales['Category'].values:
-                sales = sales._append({'Category': category, 'Total': price}, ignore_index=True)
-            else:
-                sales.loc[sales['Category'] == category, 'Total'] += price
+            price = int(item['price'])  # Ensure price is an integer
+            sales_collection.update_one(
+                {"Category": category},
+                {"$inc": {"Total": price}},  # Increment by integer value
+                upsert=True
+            )
 
-        # Update balance
+        # Update account balance
         new_balance = balance - total
-        accounts.at[index, 'Balance'] = new_balance
-        save_database(accounts, sales)
-        
+        accounts_collection.update_one(
+            {"ID": account_id},
+            {"$set": {"Balance": new_balance}}
+        )
+        accounts_collection.update_one(
+            {"ID": account_id},
+            {"$inc": {"Purchases": purchaseTot}}
+        )
+
+        # Return success message with new balance
         return jsonify({
             'message': f'Purchase successful! New balance: Php {new_balance}',
             'new_balance': new_balance
-        })
+        }), 200
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    if not DATABASE_PATH.exists():
-        save_database(
-            pd.DataFrame(columns=["ID", "Account name", "Balance"]),
-            pd.DataFrame(columns=["Category", "Total"])
-        )
+    # Create indexes if they don't exist
+    accounts_collection.create_index("ID", unique=True)
+    sales_collection.create_index("Category", unique=True)
     app.run(debug=True)
