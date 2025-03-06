@@ -14,6 +14,7 @@ client = MongoClient(uri)
 db = client["ECanteenDB"]
 accounts_collection = db["Accounts"]
 sales_collection = db["Sales"]
+history_collection = db["History"]
 
 def convert_decimal(doc):
     """Convert Decimal128 or int values to float for JSON serialization"""
@@ -61,7 +62,7 @@ def make_purchase():
         cart = eval(request.form['cart'])  # In production, use proper JSON parsing
         total = int(request.form['total'])  # Ensure total is an integer
         purchaseTot = int(request.form['purchaseTotal'])
-
+        print(cart)
         # Find account in MongoDB
         account = accounts_collection.find_one({"ID": account_id})
         if not account:
@@ -81,7 +82,7 @@ def make_purchase():
                 {"$inc": {"Total": price}},  # Increment by integer value
                 upsert=True
             )
-
+            
         # Update account balance
         new_balance = balance - total
         accounts_collection.update_one(
@@ -93,6 +94,21 @@ def make_purchase():
             {"$inc": {"Purchases": purchaseTot}}
         )
 
+        # Receipt script
+        latest_doc = history_collection.find_one(sort=[("ReceiptNumber", -1)])
+        next_number = 1  # Default if no documents exist
+        if latest_doc:
+            next_number = latest_doc["ReceiptNumber"] + 1
+
+        new_doc = {
+            "ReceiptNumber": next_number,
+            "Account": account,
+            "PurchaseReceipt": cart,
+            "PurchaseTotal": total,
+            "NumberOfPurchases":purchaseTot
+        }
+        print(new_doc)
+        history_collection.insert_one(new_doc)
         # Return success message with new balance
         return jsonify({
             'message': f'Purchase successful! New balance: Php {new_balance}',

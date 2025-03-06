@@ -10,7 +10,7 @@
     <div class = "CENTERME" class="button-group">
         <button class="btn-secondary" onclick="selectCategory('Juice')">Juice</button>
         <button class="btn-secondary" onclick="selectCategory('Food')">Food</button>
-        <button class="btn-secondary" onclick="selectCategory('Shake')">Shake</button>
+        <button class="btn-secondary" onclick="selectCategory('Candy')">Candy</button>
     </div>
 
     <div id="priceButtons" class="button-group" class = "CENTERME"></div>
@@ -46,9 +46,9 @@
 
         let cart = [];
         const prices = {
-            Juice: [10,15,20],
-            Food: [25,35,50],
-            Shake: [15,20,25]
+            Juice: [15,20,25],
+            Food: [10,15,20,25,30,35,40,45,50,60,70],
+            Candy: [10]
         };
 
         function selectCategory(cat) {
@@ -60,6 +60,7 @@
         function addToCart(cat, price) {
             cart.push({category: cat, price: price});
             updateCart();
+            console.log(cart);
         }
 
         function updateCart() {
